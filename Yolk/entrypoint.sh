@@ -23,6 +23,7 @@ QUERY_PORT="${QUERY_PORT:-}"
 MAX_PLAYERS="${MAX_PLAYERS:-}"
 ENABLE_DIRECT_CONNECT="${ENABLE_DIRECT_CONNECT:-0}"
 TOKEN="${TOKEN:-}"
+AUTHORIZE="${AUTHORIZE:-}"
 SBOX_PROJECT="${SBOX_PROJECT:-}"
 SBOX_PROJECTS_DIR="${SBOX_PROJECTS_DIR:-${CONTAINER_HOME}/projects}"
 SBOX_EXTRA_ARGS="${SBOX_EXTRA_ARGS:-}"
@@ -915,18 +916,22 @@ run_sbox() {
         ensure_project_libraries_dir "${project_target}"
         args+=( +game "${project_target}" )
         if [ -n "${MAP}" ]; then
-            args+=( "${MAP}" )
+            args+=( +map "${MAP}" )
         fi
     elif [ -n "${GAME}" ]; then
         args+=( +game "${GAME}" )
         if [ -n "${MAP}" ]; then
-            args+=( "${MAP}" )
+            args+=( +map "${MAP}" )
         fi
     elif [ "${cli_has_game_flag}" = "1" ]; then
         :
     else
         log_error "missing startup target; set a project target (SBOX_PROJECT) or provide GAME and MAP (current: GAME='${GAME:-}', MAP='${MAP:-}')"
         exit 1
+    fi
+
+    if [ -n "${AUTHORIZE}" ]; then
+        args+=( +authorize "${AUTHORIZE}" )
     fi
 
     if [ -n "${TOKEN}" ]; then
@@ -973,8 +978,8 @@ run_sbox() {
     i=0
     while [ $i -lt ${#args[@]} ]; do
         arg="${args[$i]}"
-        if [[ "$arg" == "+net_game_server_token" ]]; then
-            redacted_args+=( "+net_game_server_token" "[REDACTED]" )
+        if [[ "$arg" == "+net_game_server_token" || "$arg" == "+authorize" ]]; then
+            redacted_args+=( "$arg" "[REDACTED]" )
             i=$((i+2))
             continue
         fi
@@ -993,6 +998,12 @@ run_sbox() {
         log_info "Starting S&Box server in direct-connect mode (port=${SERVER_PORT:-27015}, query_port=${QUERY_PORT:-unset})"
     else
         log_info "Starting S&Box server in Steam relay mode"
+    fi
+
+    if [ -n "${AUTHORIZE}" ]; then
+        log_info "DXRP authorize token detected and will be passed as +authorize [REDACTED]"
+    else
+        log_warn "DXRP authorize token is empty; set the AUTHORIZE egg variable if your game requires +authorize"
     fi
     log_info "Command: ${RUNTIME_MODE} \"${SBOX_SERVER_EXE}\" ${redacted_args[*]}"
 
